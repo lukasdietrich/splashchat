@@ -3,7 +3,7 @@ var rsa = require("cryptico");
 var net = require("net");
 var hat = require("hat");
 var md5 = require("MD5");
-var col = require('colors');
+var col = require("colors");
 var sql = require("mysql");
 
 var PacketHandler = require("./packethandler.js");

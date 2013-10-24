@@ -18,10 +18,14 @@
         "server"
     ],
     "dependencies" : {
-        "sqlite3"  :  "*"
+        "mysql" : "*",
+        "colors" : "*",
+        "cryptico" : "*",
+        "MD5" : "*",
+        "hat" : "*"
     },
     "analyze": false,
-    "license": "Free to use, edit, publish as long as Lukas Dietrich is named as the author.",
+    "license": "MIT",
     "engines": {
         "node": ">=0.10.0"
     }
