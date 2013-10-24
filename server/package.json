@@ -1,0 +1,28 @@
+{
+    "name": "splashchat",
+    "preferGlobal": true,
+    "version": "0.0.1",
+    "author": "Lukas Dietrich <lukas@lukasdietrich.com>",
+    "description": "A simple, yet powerful group-based collaborative chatroom server.",
+    "contributors": [ 
+        {
+            "name": "Lukas Dietrich",
+            "email": "lukas@lukasdietrich.com"
+        } 
+    ],
+    "scripts": {
+        "start": "node ./main.js"
+    },
+    "keywords": [
+        "chat",
+        "server"
+    ],
+    "dependencies" : {
+        "sqlite3"  :  "*"
+    },
+    "analyze": false,
+    "license": "Free to use, edit, publish as long as Lukas Dietrich is named as the author.",
+    "engines": {
+        "node": ">=0.10.0"
+    }
+}

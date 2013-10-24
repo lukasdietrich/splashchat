@@ -1,0 +1,24 @@
+ 0.  Connection information (rsa key, ...)
+ 1.  Authentication
+ 2.  Registration
+ 3.
+ 4.  List all direct chats
+ 5.  List all group chats
+ 6.  Fetch Info for user-id
+ 7.  Fetch Info for group-id
+ 8.
+ 9.
+10.  Sent from server to clients when a client joins or leaves. All friends are notified.
+11.  Friendrequests are sent to server and from there back to the user
+12.
+13
+14.
+15.
+16.  Requests a direct person-to-person chatroom by naming two user-ids
+17.  Requests a group-chat-creating by name and a list of original users (the invoker is automaticly part of the group)
+18.  Direct chat message
+19.  Group chat message
+20.  Request for all previous messages of a direct chat with an id bigger than <x>
+21.  Request for all previous messages of a group chat with an id bigger than <x>
+22.  Join group
+23.  Leave group
