@@ -9,17 +9,9 @@ var sql = require("mysql");
 var PacketHandler = require("./packethandler.js");
 var ChatHandler   = require("./chathandler.js");
 
-Array.prototype.remove = function(value) {
-    var index = this.indexOf(value);
-    if(index > -1)
-        this.splice(index, 1);
+global.startsWith = function (needle, haystack) {
+    return haystack.substring(0, needle.length) === needle;
 };
-
-if (typeof String.prototype.startsWith != "function") {
-    String.prototype.startsWith = function (str){
-        return this.substring(0, str.length) === str;
-    };
-}
 
 global.log = function (msg, source) {
     source = source || "-";
@@ -243,35 +235,35 @@ packethandler.on(0, "low-level", function (packet, context) {
 var conn_count = 0;
 
 net.createServer(function (socket) {
-    this.hostname = socket.remoteAddress + ":" + socket.remotePort;
+    var context = {};
+    var buffer = "";
+
+    context.hostname = socket.remoteAddress + ":" + socket.remotePort;
     
     conn_count++;
-    log("connection established", this.hostname);
+    log("connection established", context.hostname);
     
     if(cfg.chat.maxclients > 0 && conn_count > cfg.chat.maxclients) {
         send({ "t" : 2 , "r" : 0 }, socket);
         socket.destroy();
-        log("kicked, because server has reached limit of " + cfg.chat.maxclients, this.hostname);
+        log("kicked, because server has reached limit of " + cfg.chat.maxclients, context.hostname);
         conn_count--;
     } else {
-        var that = this;
-        var buffer = "";
-
-        this.socket = socket;
-        this.loggedin = false;
-        this.clientid;
-        this.publickey = false;
+        context.socket = socket;
+        context.loggedin = false;
+        context.clientid;
+        context.publickey = false;
 
         socket.setEncoding("utf8");
 
-        send({ "t" : 0 , "p" : rsa.publicKeyString(global.crypt) }, this.socket);
+        send({ "t" : 0 , "p" : rsa.publicKeyString(global.crypt) }, context.socket);
 
         socket.on("data", function (data) {
             buffer += data;
             var ind = buffer.indexOf(";");
 
             while (ind > -1) {
-                that.socket.emit("message", buffer.substring(0, ind));
+                context.socket.emit("message", buffer.substring(0, ind));
                 buffer = buffer.substring(ind+1);
 
                 ind = buffer.indexOf(";");
@@ -279,28 +271,28 @@ net.createServer(function (socket) {
         }).on("message", function (data) {
             data = data.toString();
 
-            if(!data.startsWith("{")) {
+            if(!startsWith("{", data)) {
                 data = rsa.decrypt(data, crypt).plaintext;
             }
            
-            packethandler.handle(JSON.parse(data), that);
+            packethandler.handle(JSON.parse(data), context);
         });
 
         socket.on("close", function (data) {
-            log("Connection lost", that.hostname);
+            log("Connection lost", context.hostname);
             conn_count--;
             
-            if(that.clientid) {
-                delete clients[that.clientid];
+            if(context.clientid) {
+                delete clients[context.clientid];
             }
         });
 
         socket.on("end", function (data) {
-            log("end", that.hostname);
+            log("end", context.hostname);
         })
 
         socket.on("error", function (data) {
-            log("error " + data, that.hostname);
+            log("error " + data, context.hostname);
         });
     }
 

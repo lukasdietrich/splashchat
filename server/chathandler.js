@@ -5,7 +5,7 @@ function ChatHandler () {
     this.groups = {};
     this.direct = {};
 
-    ChatHandler.prototype.getDirectForId = function (id, callback) {
+    this.getDirectForId = function (id, callback) {
         if(id in this.direct) {
             callback(this.direct[id]);
         } else {
@@ -16,7 +16,7 @@ function ChatHandler () {
         }
     };
 
-    ChatHandler.prototype.getDirectForUsers = function (from, to, callback) {
+    this.getDirectForUsers = function (from, to, callback) {
         var f = Math.min(from, to);
         var t = Math.max(from, to);
 
@@ -39,11 +39,11 @@ function ChatHandler () {
         });
     };
 
-    ChatHandler.prototype.getGroupForId = function (id, callback) {
+    this.getGroupForId = function (id, callback) {
 
     };
 
-    ChatHandler.prototype.createGroup = function (name, users, callback) {
+    this.createGroup = function (name, users, callback) {
 
     };
 
@@ -52,7 +52,6 @@ function ChatHandler () {
 function Chat (chatid, isgroup, callback) {
 
     var that = this;
-    var callback = callback;
 
     this.type = (isgroup) ? "cgroup" : "cdirect";
     this.isgroup = isgroup;
@@ -76,15 +75,22 @@ function Chat (chatid, isgroup, callback) {
         });
     }
 
-    Chat.prototype.send = function (from, data) {
-        var timestamp = new Date().getTime();
+    this.send = function (from, data) {
+        var timestamp = Date.now();
         if(this.scope.indexOf(from) > -1) {
             db.query("INSERT INTO " + this.type + "_has_history ( " + ((this.isgroup) ? "g" : "d") + "id , uid , `timestamp` , data ) VALUES (?, ?, ?, ?) ;", [this.chatid, from, timestamp, data], function (err, result) {
                 var obj = { t : ((that.isgroup) ? 19 : 18) , i : that.chatid , o : from , d : data , l : timestamp , j : result.insertId };
             
+                for (var key in clients) {
+                    console.log("client " + key + " = " + clients[key].hostname);
+                }
+
                 for (var i = 0; i < that.scope.length; i++) {
                     var j = that.scope[i];
+                    console.log(j + " in scope");
                     if(j in clients) {
+                        console.log("is in clients");
+                        console.log("sending to " + clients[j].hostname);
                         send(obj, clients[j]);
                     }
                 };
