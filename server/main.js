@@ -101,44 +101,52 @@ packethandler.on(0, "low-level", function (packet, context) {
     // low-level
     // { t : 0 , p : <public-key> }
     
-    context.publickey = packet.p;
-    log("got publickey, now sending encrypted", context.hostname);
+    if(packet.p) {
+        context.publickey = packet.p;
+        log("got publickey, now sending encrypted", context.hostname);
+    } else return false;
 
 }).on(1, "authentication", function (packet, context) { 
     // authentication
     // { t : 1 , m : <mail> , p : <password> }
     
-    db.query("SELECT * FROM users WHERE pass=? AND mail=? ;", [md5(packet.p), packet.m], function (err, rows, fields) {
-        if(rows.length > 0) {
-            if(rows[0].id in clients) {
-                send({ "t" : 1, "s" : false , "r" : "That user is already logged in !" }, context);
+    if(packet.m && packet.p) {
+        db.query("SELECT * FROM users WHERE pass=? AND mail=? ;", [md5(packet.p), packet.m], function (err, rows, fields) {
+            if(rows.length > 0) {
+                if(rows[0].id in clients) {
+                    send({ "t" : 1, "s" : false , "r" : "That user is already logged in !" }, context);
+                } else {
+                    context.loggedin = true;
+                    context.clientid = rows[0].id;
+                    send({ "t" : 1, "s" : true }, context);
+
+                    clients[rows[0].id] = context;
+                    
+                    packethandler.handle({ t : 4 }, context);
+                    packethandler.handle({ t : 5 }, context);
+
+                    log("authenticated as [id=" + rows[0].id + ", mail=" + rows[0].mail + "]", context.hostname);
+                }
             } else {
-                context.loggedin = true;
-                context.clientid = rows[0].id;
-                send({ "t" : 1, "s" : true }, context);
-
-                clients[rows[0].id] = context;
-                
-                packethandler.handle({ t : 4 }, context);
-                packethandler.handle({ t : 5 }, context);
-
-                log("authenticated as [id=" + rows[0].id + ", mail=" + rows[0].mail + "]", context.hostname);
+                send({ "t" : 1, "s" : false , "r" : "Wrong password or username !" + (err || "") }, context);
             }
-        } else {
-            send({ "t" : 1, "s" : false , "r" : "Wrong password or username !" + (err || "") }, context);
-        }
-    });
+        });
+    } else return false;
+    
 }).on(2, "registration", function (packet, context) {
     // registration request
     // { t : 2 , n : <name> , m : <mail> , p : <password> }
     
-    db.query("INSERT INTO users ( name , mail , pass ) VALUES ( ? , ? , ? ) ;" [packet.n, packet.m, md5(packet.p)], function (err, rows, fields) {
-        var success = true;
-        if(err)
-            success = false;
+    if(packet.n && packet.m && packet.p) {
+        db.query("INSERT INTO users ( name , mail , pass ) VALUES ( ? , ? , ? ) ;" [packet.n, packet.m, md5(packet.p)], function (err, rows, fields) {
+            var success = true;
+            if(err)
+                success = false;
 
-        send({ "t" : 2 , "s" : success }, context);
-    });
+            send({ "t" : 2 , "s" : success }, context);
+        });
+    } else return false;
+
 }).on(4, "list all direct chats", function (packet, context) {
     // list all direct chats
     // { t : 4 }
@@ -156,6 +164,7 @@ packethandler.on(0, "low-level", function (packet, context) {
 
         send({ "t" : 4 , "d" : d }, context);
     });
+
 }).on(5, "list all groups", function (packet, context) {
     // list all groups
     // { t : 5 }
@@ -169,67 +178,93 @@ packethandler.on(0, "low-level", function (packet, context) {
 
         send({ "t" : 5 , "g" : g }, context);
     });
+
 }).on(6, "fetch user info", function (packet, context) {
     // fetch info for user
     // { t : 6 , i : <user-id> }
 
-    db.query("SELECT users.name, users.mail FROM users WHERE users.id = ? ;", [packet.i], function (err, rows, fields) {
-        send({ "t" : 6 , "i" : packet.i, "n" : rows[0].name , "m" : rows[0].mail }, context);
-    });
+    if(!isNaN(packet.i)) {
+        db.query("SELECT users.name, users.mail FROM users WHERE users.id = ? ;", [packet.i], function (err, rows, fields) {
+            if(rows.length > 0)
+                send({ "t" : 6 , "i" : packet.i, "n" : rows[0].name , "m" : rows[0].mail }, context);
+        });
+    } else return false;
+
 }).on(7, "fetch group info", function (packet, context) {
     // fetch info for group
     // { t : 7 , i : <group-id> }
     
-    db.query("SELECT cgroup.name, cgroup_has_users.uid FROM cgroup, cgroup_has_users WHERE cgroup.id = cgroup_has_users.gid AND cgroup.id = ? ;", [packet.i], function (err, rows, fields) {
-        var u = [];
+    if(!isNaN(packet.i)) {
+        db.query("SELECT cgroup.name, cgroup_has_users.uid FROM cgroup, cgroup_has_users WHERE cgroup.id = cgroup_has_users.gid AND cgroup.id = ? ;", [packet.i], function (err, rows, fields) {
+            if(rows.length > 0) {
+                var u = [];
 
-        for (var i = 0; i < rows.length; i++) {
-            u.push(rows[i].uid);
-        };
+                for (var i = 0; i < rows.length; i++) {
+                    u.push(rows[i].uid);
+                };
 
-        send({ "t" : 7 , "n" : rows[0].name , "u" : u }, context);
-    });
+                send({ "t" : 7 , "n" : rows[0].name , "u" : u }, context);
+            }
+        });
+    } else return false;
+
 }).on(16, "directchat request", function (packet, context) {
     // request chat [direct]
     // { t : 16 , p : <partner-id> }
     
-    chathandler.getDirectForUsers(context.clientid, packet.p, function (chat) {
-        send({ "t" : 16 , "i" : chat.chatid }, context);
-    });
+    if(!isNaN(packet.p)) {  
+        chathandler.getDirectForUsers(context.clientid, packet.p, function (chat) {
+            send({ "t" : 16 , "i" : chat.chatid }, context);
+        });
+    } else return false;
+
 }).on(17, "groupchat request", function (packet, context) {
     // request chat [group]
     // { t : 17 , n : <name> , (u : [<user1>, <user2>, ...]) }
     
-    packet.u.push(context.clientid);
-    chathandler.createGroup(packet.n, packet.u, function (chat) {
-        send({ "t" : 17 , "i" : chat.chatid }, context);
-    });
+    if(packet.n) {
+        packet.u = packet.u || [];
+        packet.u.push(context.clientid);
+        chathandler.createGroup(packet.n, packet.u, function (chat) {
+            send({ "t" : 17 , "i" : chat.chatid }, context);
+        });
+    } else return false;
+
 }).on(18, "directchat message", function (packet, context) { 
     // message [direct]
     // { t : 18 , i : <chat-id> , d : <data> }
 
-    chathandler.getDirectForId(packet.i, function (chat) {
-        chat.send(context.clientid, packet.d);
-    });
+    if(!isNaN(packet.i) && packet.d) {
+        chathandler.getDirectForId(packet.i, function (chat) {
+            chat.send(context.clientid, packet.d);
+        });
+    } else return false;
+
 }).on(19, "groupchat message", function (packet, context) { 
     // message [group]
     // { t : 19 , i : <group-id> , d : <data> }
 
-    chathandler.getGroupForId(packet.i, function (chat) {
-        chat.send(context.clientid, packet.d);
-    });
+    if(!isNaN(packet.i) && packet.data) {
+        chathandler.getGroupForId(packet.i, function (chat) {
+            chat.send(context.clientid, packet.d);
+        });
+    } else return false;
+
 }).on(20, "fetch previous direct messages", function (packet, context) {
     // { t : 20 , i : <chat-id> , j : <from-id> }
     
-    db.query("SELECT * FROM cdirect_has_history WHERE cdirect_has_history.did = ? AND cdirect_has_history.id > ? ;", [packet.i, packet.j], function (err, rows, fields) {
-        var h = [];
+    if(!isNaN(packet.i) && !isNaN(packet.j)) {
+        db.query("SELECT * FROM cdirect_has_history WHERE cdirect_has_history.did = ? AND cdirect_has_history.id > ? ;", [packet.i, packet.j], function (err, rows, fields) {
+            var h = [];
 
-        for (var i = 0; i < rows.length; i++) {
-            h.push({ "o" : rows[i].uid , "j" : rows[i].id , "l" : rows[i].timestamp , "d" : rows[i].data });
-        };
+            for (var i = 0; i < rows.length; i++) {
+                h.push({ "o" : rows[i].uid , "j" : rows[i].id , "l" : rows[i].timestamp , "d" : rows[i].data });
+            };
 
-        send({ "t" : 20 , "i" : packet.i , "h" : h }, context);
-    });
+            send({ "t" : 20 , "i" : packet.i , "h" : h }, context);
+        });
+    } else return false;
+
 });
 
 var conn_count = 0;

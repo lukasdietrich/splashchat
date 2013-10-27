@@ -80,17 +80,10 @@ function Chat (chatid, isgroup, callback) {
         if(this.scope.indexOf(from) > -1) {
             db.query("INSERT INTO " + this.type + "_has_history ( " + ((this.isgroup) ? "g" : "d") + "id , uid , `timestamp` , data ) VALUES (?, ?, ?, ?) ;", [this.chatid, from, timestamp, data], function (err, result) {
                 var obj = { t : ((that.isgroup) ? 19 : 18) , i : that.chatid , o : from , d : data , l : timestamp , j : result.insertId };
-            
-                for (var key in clients) {
-                    console.log("client " + key + " = " + clients[key].hostname);
-                }
 
                 for (var i = 0; i < that.scope.length; i++) {
                     var j = that.scope[i];
-                    console.log(j + " in scope");
                     if(j in clients) {
-                        console.log("is in clients");
-                        console.log("sending to " + clients[j].hostname);
                         send(obj, clients[j]);
                     }
                 };

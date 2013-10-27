@@ -7,7 +7,12 @@ function PacketHandler () {
 
     PacketHandler.prototype.handle = function (packet, context) {
         if("t" in packet && packet.t in this.handlers) {
-            this.handlers[packet.t](packet, context);
+            try {
+                if(this.handlers[packet.t](packet, context) === false)
+                    log("corrupt packet ".red + JSON.stringify(packet).cyan, "packethandler"); 
+            } catch (e) {
+                log("problem with packet".red, "error");
+            }
         } else {
             log("invalid packet : no type or unhandled type", "PACKETHANDLER");
         }
