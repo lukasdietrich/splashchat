@@ -126,6 +126,24 @@ packethandler.on(0, "low-level", function (packet, context) {
                     packethandler.handle({ t : 5 }, context);
 
                     log("authenticated as [id=" + rows[0].id + ", mail=" + rows[0].mail + "]", context.hostname);
+
+                    db.query("SELECT cdirect.usr_id_a, cdirect.usr_id_b FROM cdirect WHERE cdirect.usr_id_a = ? OR cdirect.usr_id_b = ? ;", [context.clientid, context.clientid], function (err, rows, fields) {
+                        for (var i = 0; i < rows.length; i++) {
+                            var self = rows[i].usr_id_a,
+                                friend = rows[i].usr_id_b;
+
+                            if(friend === context.clientid) {
+                                friend = self;
+                                self = context.clientid;
+                            }
+
+                            send({ "t" : 10 , "p" : friend , "s" : ((friend in clients) ? 1 : 0) }, context);
+
+                            if(friend in clients) {
+                                send({ "t" : 10 , "p" : self , "s" : 1 }, clients[friend]);
+                            }
+                        };
+                    });
                 }
             } else {
                 send({ "t" : 1, "s" : false , "r" : "Wrong password or username !" + (err || "") }, context);
@@ -316,6 +334,22 @@ net.createServer(function (socket) {
         socket.on("close", function (data) {
             log("Connection lost", context.hostname);
             conn_count--;
+
+            db.query("SELECT cdirect.usr_id_a, cdirect.usr_id_b FROM cdirect WHERE cdirect.usr_id_a = ? OR cdirect.usr_id_b = ? ;", [context.clientid, context.clientid], function (err, rows, fields) {
+                for (var i = 0; i < rows.length; i++) {
+                    var self = rows[i].usr_id_a,
+                        friend = rows[i].usr_id_b;
+
+                    if(friend === context.clientid) {
+                        friend = self;
+                        self = context.clientid;
+                    }
+
+                    if(friend in clients) {
+                        send({ "t" : 10 , "p" : self , "s" : 0 }, clients[friend]);
+                    }
+                };
+            });
             
             if(context.clientid) {
                 delete clients[context.clientid];
