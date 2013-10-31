@@ -76,8 +76,11 @@ function Chat (chatid, isgroup, callback) {
     }
 
     this.send = function (from, data) {
-        var timestamp = Date.now();
         if(this.scope.indexOf(from) > -1) {
+            var timestamp = Date.now();
+            data = data.replace(/</g, "&lt;")
+                       .replace(/>/g, "&gt;");
+
             db.query("INSERT INTO " + this.type + "_has_history ( " + ((this.isgroup) ? "g" : "d") + "id , uid , `timestamp` , data ) VALUES (?, ?, ?, ?) ;", [this.chatid, from, timestamp, data], function (err, result) {
                 var obj = { t : ((that.isgroup) ? 19 : 18) , i : that.chatid , o : from , d : data , l : timestamp , j : result.insertId };
 
