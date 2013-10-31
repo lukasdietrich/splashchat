@@ -6,6 +6,8 @@ var md5 = require("MD5");
 var col = require("colors");
 var sql = require("mysql");
 
+var packet_delimiter = String.fromCharCode(0);
+
 var PacketHandler = require("./packethandler.js");
 var ChatHandler   = require("./chathandler.js");
 
@@ -88,7 +90,7 @@ global.send = function (data, scope) {
             }
         }
 
-        socket.write(data+";");
+        socket.write(data + packet_delimiter);
     } else {
         log("scope doesn't have a write function");
     }
@@ -313,13 +315,13 @@ net.createServer(function (socket) {
 
         socket.on("data", function (data) {
             buffer += data;
-            var ind = buffer.indexOf(";");
+            var ind = buffer.indexOf(packet_delimiter);
 
             while (ind > -1) {
                 context.socket.emit("message", buffer.substring(0, ind));
                 buffer = buffer.substring(ind+1);
 
-                ind = buffer.indexOf(";");
+                ind = buffer.indexOf(packet_delimiter);
             }
         }).on("message", function (data) {
             data = data.toString();
@@ -328,7 +330,12 @@ net.createServer(function (socket) {
                 data = rsa.decrypt(data, crypt).plaintext;
             }
            
-            packethandler.handle(JSON.parse(data), context);
+            try {
+                data = JSON.parse(data);
+                packethandler.handle(data, context);
+            } catch (e) {
+                log(("invalid JSON " + data).red);
+            }
         });
 
         socket.on("close", function (data) {
