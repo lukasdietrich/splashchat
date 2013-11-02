@@ -120,10 +120,11 @@ packethandler.on(0, "low-level", function (packet, context) {
                 } else {
                     context.loggedin = true;
                     context.clientid = rows[0].id;
+                    context.hostname = rows[0].mail;
                     send({ "t" : 1, "s" : true }, context);
 
                     clients[rows[0].id] = context;
-                    
+
                     packethandler.handle({ t : 4 }, context);
                     packethandler.handle({ t : 5 }, context);
 
@@ -167,6 +168,14 @@ packethandler.on(0, "low-level", function (packet, context) {
         });
     } else return false;
 
+}).on(3, "ping-pong", function (packet, context) {
+    // pong after a ping
+    // { t : 3 , s : <salt> }
+
+    if(packet.s && context.pingsalt && packet.s == context.pingsalt) {
+        context.lastpong = Date.now();
+        log("'pong!'", context.hostname)
+    }
 }).on(4, "list all direct chats", function (packet, context) {
     // list all direct chats
     // { t : 4 }
@@ -298,16 +307,16 @@ net.createServer(function (socket) {
     conn_count++;
     log("connection established", context.hostname);
     
-    if(cfg.chat.maxclients > 0 && conn_count > cfg.chat.maxclients) {
-        send({ "t" : 2 , "r" : 0 }, socket);
+    if(cfg.general.maxclients > 0 && conn_count > cfg.general.maxclients) {
         socket.destroy();
-        log("kicked, because server has reached limit of " + cfg.chat.maxclients, context.hostname);
+        log("kicked, because server has reached limit of " + cfg.general.maxclients, context.hostname);
         conn_count--;
     } else {
         context.socket = socket;
         context.loggedin = false;
         context.clientid;
         context.publickey = false;
+        context.lastpong = Date.now();
 
         socket.setEncoding("utf8");
 
@@ -373,5 +382,25 @@ net.createServer(function (socket) {
     }
 
 }).listen(cfg.general.port, cfg.general.host);
+
+//  ping
+setInterval(function () {
+    log("invoking ping, to check if clients are reachable");
+
+    var now = Date.now();
+
+    for(var key in clients) {
+        var client = clients[key];
+
+        if(now - client.lastpong > cfg.client.timeout + cfg.client.ping) {
+            log("client timed out", client.hostname);
+            client.socket.destroy();
+        } else {
+            client.pingsalt = hat();
+            send({ "t" : 3 , "s" : client.pingsalt }, client);
+        }
+
+    };
+}, cfg.client.ping);
 
 log("listening on " + cfg.general.host.cyan + ":" + cfg.general.port.toString().cyan);

@@ -1,19 +1,24 @@
 {
     "general" : {
-        "host"       : "0.0.0.0",
-        "port"       : 44726,
-        "rsa-length" : 2048
+        "host"       : "0.0.0.0" ,
+        "port"       : 44726 ,
+        "rsa-length" : 2048 ,
+        "maxclients" : 512
     } ,
 
     "mysql" : {
-        "host"       : "127.0.0.1",
-        "user"       : "root",
-        "pass"       : "",
+        "host"       : "127.0.0.1" ,
+        "user"       : "root" ,
+        "pass"       : "" ,
         "database"   : "splashchat"
     } ,
 
     "chat" : {
-        "maxclients" : 512,
         "maxhistory" : 1024
+    } ,
+
+    "client" : {
+        "ping"       : 20000 ,
+        "timeout"    :  5000
     }
 }

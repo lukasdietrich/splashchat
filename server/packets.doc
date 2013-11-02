@@ -1,7 +1,7 @@
  0.  Connection information (rsa key, ...)
  1.  Authentication
  2.  Registration
- 3.
+ 3.  Ping (server pings, client pongs !)
  4.  List all direct chats
  5.  List all group chats
  6.  Fetch Info for user-id
